@@ -116,41 +116,40 @@ class UNet(nn.Module):
         self.sa6 = SelfAttention(64, 64)
         self.outc = nn.Conv2d(64, c_out, kernel_size=1)
 
+    def pos_encoding(self, t, channels):
+        inv_freq = 1.0 / (
+            10000
+            ** (torch.arange(0, channels, 2, device=self.device).float() / channels)
+        )
+        pos_enc_a = torch.sin(t.repeat(1, channels // 2) * inv_freq)
+        pos_enc_b = torch.cos(t.repeat(1, channels // 2) * inv_freq)
+        pos_enc = torch.cat([pos_enc_a, pos_enc_b], dim=-1)
+        return pos_enc
 
-def pos_encoding(self, t, channels):
-    inv_freq = 1.0 / (
-        10000 ** (torch.arange(0, channels, 2, device=self.device).float() / channels)
-    )
-    pos_enc_a = torch.sin(t.repeat(1, channels // 2) * inv_freq)
-    pos_enc_b = torch.cos(t.repeat(1, channels // 2) * inv_freq)
-    pos_enc = torch.cat([pos_enc_a, pos_enc_b], dim=-1)
-    return pos_enc
+    def forward(self, x, t, y):
+        t = t.unsqueeze(-1).type(torch.float)
+        t = self.pos_encoding(t, self.time_dim)
 
+        if y is not None:
+            t += self.label_emb(y)
 
-def forward(self, x, t, y):
-    t = t.unsqueeze(-1).type(torch.float)
-    t = self.pos_encoding(t, self.time_dim)
+        x1 = self.inc(x)
+        x2 = self.down1(x1, t)
+        x2 = self.sa1(x2)
+        x3 = self.down2(x2, t)
+        x3 = self.sa2(x3)
+        x4 = self.down3(x3, t)
+        x4 = self.sa3(x4)
 
-    if y is not None:
-        t += self.label_emb(y)
+        x4 = self.bot1(x4)
+        x4 = self.bot2(x4)
+        x4 = self.bot3(x4)
 
-    x1 = self.inc(x)
-    x2 = self.down1(x1, t)
-    x2 = self.sa1(x2)
-    x3 = self.down2(x2, t)
-    x3 = self.sa2(x3)
-    x4 = self.down3(x3, t)
-    x4 = self.sa3(x4)
-
-    x4 = self.bot1(x4)
-    x4 = self.bot2(x4)
-    x4 = self.bot3(x4)
-
-    x = self.up1(x4, x3, t)
-    x = self.sa4(x)
-    x = self.up2(x, x2, t)
-    x = self.sa5(x)
-    x = self.up3(x, x1, t)
-    x = self.sa6(x)
-    output = self.outc(x)
-    return output
+        x = self.up1(x4, x3, t)
+        x = self.sa4(x)
+        x = self.up2(x, x2, t)
+        x = self.sa5(x)
+        x = self.up3(x, x1, t)
+        x = self.sa6(x)
+        output = self.outc(x)
+        return output
