@@ -1,0 +1,4 @@
+[project]
+name = "diffusion_outlier"
+version = "0.1"
+dependencies = ["matplotlib"]
