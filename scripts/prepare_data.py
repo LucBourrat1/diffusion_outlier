@@ -44,6 +44,9 @@ def main():
             dest = f"{new_dir}/{img_name}"
             shutil.copy(src, dest)
 
+    for i in glob(f"{DATA_PATH}/*.jpg"):
+        os.remove(i)
+
 
 if __name__ == "__main__":
     args = parser()
